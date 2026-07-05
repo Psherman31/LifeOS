@@ -1,0 +1,231 @@
+// LifeOS data model — see docs/SPEC notes in README.
+// SQLite; enums are represented as String fields with documented values.
+
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "sqlite"
+  url      = env("DATABASE_URL")
+}
+
+// An area of life requiring ongoing cultivation (Work, Home/Parenting, ...).
+model Domain {
+  id        String   @id @default(cuid())
+  name      String   @unique
+  sortOrder Int      @default(0)
+  archived  Boolean  @default(false)
+  createdAt DateTime @default(now())
+
+  stresses Stress[]
+  projects Project[]
+  tasks    Task[]
+  habits   Habit[]
+}
+
+// Amorphous area of stress / unresolved attention. Named and held until
+// decomposed into projects and tasks.
+model Stress {
+  id             String    @id @default(cuid())
+  title          String
+  notes          String?
+  // active | held | dormant | closed
+  status         String    @default("active")
+  // none | partial | complete
+  decomposition  String    @default("none")
+  avoidanceFlag  Boolean   @default(false)
+  avoidanceNotes String?
+  domainId       String?
+  domain         Domain?   @relation(fields: [domainId], references: [id])
+  createdAt      DateTime  @default(now())
+  lastMovementAt DateTime  @default(now())
+  closedAt       DateTime?
+
+  projects Project[]
+  tasks    Task[]
+}
+
+// Multi-step effort with a clear completion state.
+model Project {
+  id        String    @id @default(cuid())
+  title     String
+  notes     String?
+  // active | waiting | on_hold | complete
+  status    String    @default("active")
+  deadline  DateTime?
+  waitingOn String?
+  domainId  String?
+  domain    Domain?   @relation(fields: [domainId], references: [id])
+  stressId  String?
+  stress    Stress?   @relation(fields: [stressId], references: [id])
+  createdAt DateTime  @default(now())
+  closedAt  DateTime?
+
+  tasks Task[]
+}
+
+// Concrete, completable action. The behavioral layer.
+model Task {
+  id       String  @id @default(cuid())
+  title    String
+  notes    String?
+  // pool | waiting | done | released
+  // ("today" membership lives on DayPlanItem, not here)
+  status   String  @default("pool")
+  deadline DateTime?
+  // work | home | any  — where this can realistically be done
+  context  String  @default("any")
+  // rough size hint: quick | medium | big
+  size     String  @default("medium")
+
+  domainId  String?
+  domain    Domain?  @relation(fields: [domainId], references: [id])
+  projectId String?
+  project   Project? @relation(fields: [projectId], references: [id])
+  stressId  String?
+  stress    Stress?  @relation(fields: [stressId], references: [id])
+
+  // Task-level dependency: this task waits until blocker is done.
+  blockedById String?
+  blockedBy   Task?   @relation("TaskBlocks", fields: [blockedById], references: [id])
+  blocks      Task[]  @relation("TaskBlocks")
+
+  waitingOnPerson String? // waiting on a person rather than a task
+
+  // Avoidance machinery. deferralCount is NEVER shown in the UI.
+  deferralCount Int     @default(0)
+  dreadFlag     Boolean @default(false)
+  // want_but_avoiding | values_uncertain | may_not_be_necessary
+  avoidanceType String?
+  braveActFlag  Boolean @default(false)
+
+  // voice | chat | capture | system | manual
+  source    String    @default("manual")
+  createdAt DateTime  @default(now())
+  updatedAt DateTime  @updatedAt
+  doneAt    DateTime?
+
+  planItems DayPlanItem[]
+}
+
+// Recurring practice. Two types that fail differently:
+// efficiency (reduces friction) vs values (expresses who you want to be).
+model Habit {
+  id             String    @id @default(cuid())
+  title          String
+  // efficiency | values
+  type           String    @default("values")
+  trigger        String? // habit-stack anchor, e.g. "after morning coffee"
+  minimumVersion String? // smallest countable version
+  // forming | established | graduated | paused
+  status         String    @default("forming")
+  // work | home | any
+  context        String    @default("any")
+  domainId       String?
+  domain         Domain?   @relation(fields: [domainId], references: [id])
+  createdAt      DateTime  @default(now())
+
+  planItems DayPlanItem[]
+}
+
+// One day's plan: "Today will be a win if…"
+model DayPlan {
+  id   String @id @default(cuid())
+  // local date string YYYY-MM-DD (user's timezone)
+  date String @unique
+  // draft | committed | reviewed
+  status String @default("draft")
+
+  winStatement    String? // optional freeform "Today will be a win if..."
+  morningBriefing String? // AI-prepared notes shown at morning review
+  morningNote     String? // how the user said they're coming into the day
+  eveningNote     String? // anything the user added at review
+  eveningSummary  String? // AI debrief summary
+  calendarChecked Boolean @default(false)
+  lowEnergyMode   Boolean @default(false)
+
+  committedAt DateTime?
+  reviewedAt  DateTime?
+  createdAt   DateTime  @default(now())
+
+  items DayPlanItem[]
+}
+
+// A task or habit selected into a day.
+model DayPlanItem {
+  id        String  @id @default(cuid())
+  dayPlanId String
+  dayPlan   DayPlan @relation(fields: [dayPlanId], references: [id], onDelete: Cascade)
+
+  taskId  String?
+  task    Task?   @relation(fields: [taskId], references: [id])
+  habitId String?
+  habit   Habit?  @relation(fields: [habitId], references: [id])
+
+  // must | extra   ("must" items define the win condition)
+  tier      String  @default("extra")
+  sortOrder Int     @default(0)
+  dreadFlag Boolean @default(false)
+
+  // pending | done | missed | released
+  outcome String @default("pending")
+  // for misses: blocked | no_time | no_energy | avoided | not_priority
+  missCause   String?
+  blockerNote String? // what was missing, e.g. "no groceries"
+
+  createdAt DateTime @default(now())
+}
+
+// The only record that matters. Never a completion log — an evidence base.
+model ValuesLedgerEntry {
+  id          String   @id @default(cuid())
+  date        String // YYYY-MM-DD
+  description String
+  value       String? // courage, connection, presence, diligence, care, ...
+  wasFlagged  Boolean  @default(false) // was flagged as anxiety-producing beforehand
+  note        String?
+  createdAt   DateTime @default(now())
+}
+
+// On-demand conversations: decomposition, avoidance work, weekly review.
+model ChatSession {
+  id        String   @id @default(cuid())
+  // general | decompose | avoidance | weekly | reentry
+  kind      String   @default("general")
+  // optional link target (e.g. stress or task being discussed)
+  stressId  String?
+  taskId    String?
+  title     String?
+  summary   String? // AI-written summary stored when session ends
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  messages ChatMessage[]
+}
+
+model ChatMessage {
+  id        String      @id @default(cuid())
+  sessionId String
+  session   ChatSession @relation(fields: [sessionId], references: [id], onDelete: Cascade)
+  role      String // user | assistant
+  content   String
+  createdAt DateTime    @default(now())
+}
+
+// Weekly conversation record: always ends in concrete intentions.
+model WeeklyReview {
+  id         String   @id @default(cuid())
+  weekOf     String // YYYY-MM-DD of the Monday
+  summary    String?
+  intentions String? // JSON array of intention strings
+  createdAt  DateTime @default(now())
+}
+
+// Single-row app state (re-entry detection, misc settings).
+model AppState {
+  id           Int      @id @default(1)
+  lastActiveAt DateTime @default(now())
+  userName     String?
+  updatedAt    DateTime @updatedAt
+}

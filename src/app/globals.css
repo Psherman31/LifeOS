@@ -1,0 +1,51 @@
+@import "tailwindcss";
+
+@theme {
+  --color-paper: #faf8f4;
+  --color-ink: #1c1917;
+  --color-soft: #78716c;
+  --color-line: #e7e2da;
+  --color-accent: #2d6a4f;
+  --color-accent-soft: #eef4f0;
+  --color-warn: #b45309;
+  --font-serif: Georgia, "Times New Roman", serif;
+}
+
+body {
+  background: var(--color-paper);
+  color: var(--color-ink);
+  -webkit-tap-highlight-color: transparent;
+}
+
+@layer components {
+  .card {
+    @apply bg-white rounded-2xl border border-line p-4 shadow-[0_1px_2px_rgba(0,0,0,0.03)];
+  }
+  .btn-primary,
+  .btn-ghost,
+  .btn-quiet {
+    @apply inline-flex items-center justify-center gap-1.5 rounded-xl px-4 py-2.5 text-sm font-medium transition-colors active:scale-[0.98] disabled:opacity-40 disabled:pointer-events-none;
+  }
+  .btn-primary {
+    @apply bg-accent text-white hover:bg-[#245741];
+  }
+  .btn-ghost {
+    @apply bg-transparent border border-line text-ink hover:bg-white;
+  }
+  .btn-quiet {
+    @apply bg-accent-soft text-accent hover:bg-[#e2ece6];
+  }
+  .input {
+    @apply w-full rounded-xl border border-line bg-white px-3.5 py-2.5 text-[15px] outline-none focus:border-accent placeholder:text-soft/60;
+  }
+  .chip {
+    @apply inline-flex items-center rounded-full px-2.5 py-0.5 text-xs font-medium bg-accent-soft text-accent;
+  }
+  .chip-muted {
+    @apply inline-flex items-center rounded-full px-2.5 py-0.5 text-xs font-medium bg-line/60 text-soft;
+  }
+  .ritual-heading {
+    font-family: var(--font-serif);
+    @apply text-2xl leading-snug;
+  }
+}
