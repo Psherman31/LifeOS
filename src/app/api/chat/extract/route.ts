@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
 import { prisma } from "@/lib/db";
-import { askJSON } from "@/lib/anthropic";
+import { askJSON, describeAnthropicError } from "@/lib/anthropic";
 import { EXTRACT_SYSTEM } from "@/lib/prompts";
 import { mondayOf, todayLocal } from "@/lib/dates";
 
@@ -34,7 +34,7 @@ export async function POST(req: NextRequest) {
   } catch (e) {
     console.error("extract failed", e);
     return NextResponse.json(
-      { error: "Couldn't reach the AI to file the actions — the conversation is saved, try again." },
+      { error: `Couldn't file the actions — ${describeAnthropicError(e)} The conversation is saved.` },
       { status: 502 }
     );
   }

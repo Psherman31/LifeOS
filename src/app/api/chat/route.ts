@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
 import { prisma } from "@/lib/db";
-import { anthropic, MODEL } from "@/lib/anthropic";
+import { anthropic, MODEL, describeAnthropicError } from "@/lib/anthropic";
 import { chatSystem } from "@/lib/prompts";
 import { buildContext } from "@/lib/context";
 
@@ -73,7 +73,7 @@ export async function POST(req: NextRequest) {
         await s.finalMessage();
       } catch (e) {
         console.error("chat stream failed", e);
-        const msg = "\n[Something went wrong reaching the AI — try again.]";
+        const msg = `\n[${describeAnthropicError(e)}]`;
         full += msg;
         controller.enqueue(encoder.encode(msg));
       }

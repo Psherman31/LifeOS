@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
 import { prisma } from "@/lib/db";
-import { askJSON } from "@/lib/anthropic";
+import { askJSON, describeAnthropicError } from "@/lib/anthropic";
 import { MORNING_SYSTEM } from "@/lib/prompts";
 import { buildContext } from "@/lib/context";
 import { todayLocal } from "@/lib/dates";
@@ -37,8 +37,7 @@ export async function POST(req: NextRequest) {
   } catch (e) {
     console.error("morning draft failed", e);
     draft = {
-      briefing:
-        "I couldn't prepare notes just now (AI call failed) — pick your day manually below.",
+      briefing: `I couldn't prepare notes just now — ${describeAnthropicError(e)} Pick your day manually below.`,
       mustIds: [],
       extraIds: [],
       sequencingNote: null,

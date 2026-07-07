@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
 import { prisma } from "@/lib/db";
-import { askJSON } from "@/lib/anthropic";
+import { askJSON, describeAnthropicError } from "@/lib/anthropic";
 import { EVENING_SYSTEM } from "@/lib/prompts";
 import { buildContext } from "@/lib/context";
 import { todayLocal } from "@/lib/dates";
@@ -109,7 +109,12 @@ export async function POST(req: NextRequest) {
     });
   } catch (e) {
     console.error("evening debrief failed", e);
-    debrief = { summary: "", unblockTasks: [], braveActs: [], tomorrowNote: null };
+    debrief = {
+      summary: `Outcomes were recorded, but I couldn't prepare a debrief — ${describeAnthropicError(e)}`,
+      unblockTasks: [],
+      braveActs: [],
+      tomorrowNote: null,
+    };
   }
 
   // Create unblocking tasks; the missed task waits behind them.

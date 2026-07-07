@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
 import { prisma } from "@/lib/db";
-import { askJSON } from "@/lib/anthropic";
+import { askJSON, describeAnthropicError } from "@/lib/anthropic";
 import { CAPTURE_SYSTEM } from "@/lib/prompts";
 import { todayLocal } from "@/lib/dates";
 
@@ -36,7 +36,7 @@ export async function POST(req: NextRequest) {
   } catch (e) {
     console.error("capture parse failed", e);
     return NextResponse.json(
-      { error: "Couldn't reach the AI to sort this — nothing was lost, try again in a moment." },
+      { error: `Couldn't sort this — ${describeAnthropicError(e)} Nothing was lost.` },
       { status: 502 }
     );
   }
