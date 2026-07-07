@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from "next/server";
 import { prisma } from "@/lib/db";
 import { askJSON, describeAnthropicError } from "@/lib/anthropic";
 import { MORNING_SYSTEM } from "@/lib/prompts";
+import { MORNING_SCHEMA } from "@/lib/schemas";
 import { buildContext } from "@/lib/context";
 import { todayLocal } from "@/lib/dates";
 
@@ -32,7 +33,8 @@ export async function POST(req: NextRequest) {
       user: `${context}\n\nlowEnergyMode: ${!!lowEnergy}\nUser's note on how they're coming into the day: ${
         note?.trim() || "(none)"
       }\n\nPrepare the morning notes.`,
-      maxTokens: 1500,
+      schema: MORNING_SCHEMA,
+      maxTokens: 2000,
     });
   } catch (e) {
     console.error("morning draft failed", e);

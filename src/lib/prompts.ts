@@ -44,21 +44,7 @@ Rules:
 - deadline: ISO date only if the text states or strongly implies one. Never invent deadlines.
 - Do not pad. One mentioned thing = one item. Do not invent items the user didn't say or clearly imply.
 
-Respond with ONLY a JSON object:
-{
-  "items": [
-    {
-      "kind": "task" | "stress" | "project",
-      "title": "...",
-      "notes": "..." | null,
-      "domain": "<exact domain name from list>" | null,
-      "context": "work" | "home" | "any",
-      "size": "quick" | "medium" | "big",
-      "deadline": "YYYY-MM-DD" | null,
-      "children": [ { "title": "...", "context": "...", "size": "..." } ]  // projects only, else []
-    }
-  ]
-}`;
+Call the \`respond\` tool. For each item: "domain" is the exact domain name from the list, or omitted if none fits; "deadline" is YYYY-MM-DD, omitted if none was stated or implied; "children" (projects only) are 1-3 starter tasks.`;
 
 export const MORNING_SYSTEM = `${CORE_PHILOSOPHY}
 
@@ -72,8 +58,7 @@ Produce:
 
 If lowEnergyMode is true: mustIds should contain at most ONE item — the single thing that would make today feel okay — and extraIds at most 2 genuinely quick items.
 
-Respond with ONLY a JSON object:
-{ "briefing": "...", "mustIds": ["..."], "extraIds": ["..."], "sequencingNote": "..." | null }`;
+Call the \`respond\` tool with these fields. Keep "briefing" itself concise even when the day's context is emotionally heavy — warmth belongs in the sentence, not in extra length.`;
 
 export const EVENING_SYSTEM = `${CORE_PHILOSOPHY}
 
@@ -85,13 +70,7 @@ Produce:
 3. "braveActs": for each dread-flagged item that was completed, one ledger-ready description ("Made the call to X despite dreading it"). Empty array if none.
 4. "tomorrowNote": one sentence to carry into tomorrow's briefing, or null. If something was avoided repeatedly, note it here for a gentle step-2 ladder touch tomorrow — an offer, not a flag.
 
-Respond with ONLY a JSON object:
-{
-  "summary": "...",
-  "unblockTasks": [ { "title": "...", "context": "work"|"home"|"any", "size": "quick"|"medium"|"big", "followUpTaskId": "..." } ],
-  "braveActs": [ { "description": "...", "value": "courage"|"connection"|"presence"|"diligence"|"care"|"honesty" } ],
-  "tomorrowNote": "..." | null
-}`;
+Call the \`respond\` tool with these fields. "value" on a brave act is one of: courage, connection, presence, diligence, care, honesty.`;
 
 export function chatSystem(kind: string): string {
   const base = `${CORE_PHILOSOPHY}
@@ -122,12 +101,4 @@ MODE: Re-entry after a gap. There is no backlog to answer for. Open with a versi
 
 export const EXTRACT_SYSTEM = `You extract agreed-upon actions from a coaching conversation. Given the transcript, list ONLY the concrete tasks, projects, or released items the user actually agreed to — no inventions, no maybes that weren't ratified.
 
-Respond with ONLY a JSON object:
-{
-  "tasks": [ { "title": "...", "context": "work"|"home"|"any", "size": "quick"|"medium"|"big", "deadline": "YYYY-MM-DD" | null } ],
-  "projects": [ { "title": "...", "tasks": [ { "title": "...", "context": "...", "size": "..." } ] } ],
-  "releasedTaskIds": [ "..." ],
-  "intentions": [ "..." ],
-  "summary": "one-sentence summary of what was decided"
-}
-"intentions" only for weekly conversations, else []. "releasedTaskIds" only if the user explicitly decided to drop a task that has an id in the context.`;
+Call the \`respond\` tool with these fields. "intentions" only for weekly conversations, else an empty array. "releasedTaskIds" only if the user explicitly decided to drop a task that has an id in the context. Use empty arrays and an empty string, never omit a field.`;

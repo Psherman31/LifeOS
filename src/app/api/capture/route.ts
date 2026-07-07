@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from "next/server";
 import { prisma } from "@/lib/db";
 import { askJSON, describeAnthropicError } from "@/lib/anthropic";
 import { CAPTURE_SYSTEM } from "@/lib/prompts";
+import { CAPTURE_SCHEMA } from "@/lib/schemas";
 import { todayLocal } from "@/lib/dates";
 
 type ParsedChild = { title: string; context?: string; size?: string };
@@ -32,6 +33,7 @@ export async function POST(req: NextRequest) {
       user: `Today is ${todayLocal()}. Available domains: ${domains
         .map((d) => d.name)
         .join(" | ")}\n\nCapture:\n${text}`,
+      schema: CAPTURE_SCHEMA,
     });
   } catch (e) {
     console.error("capture parse failed", e);

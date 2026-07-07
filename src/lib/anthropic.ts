@@ -17,13 +17,25 @@ export function describeAnthropicError(e: unknown): string {
   if (status === 404) return `The model "${MODEL}" wasn't found — check ANTHROPIC_MODEL.`;
   if (status === 429) return "Rate limited by the Anthropic API — try again in a moment.";
   if (status && status >= 500) return "Anthropic's API is having trouble right now — try again shortly.";
+  if (message.startsWith("truncated:")) {
+    return "The AI's reply was cut off before it finished — try again, or it may need a larger token budget.";
+  }
   return `AI call failed: ${message.slice(0, 200)}`;
 }
 
-/** Call Claude and parse a single JSON object out of the response. */
+/**
+ * Call Claude and get back a structured object, via a forced tool call
+ * rather than free-text JSON. Asking a model to type raw JSON as prose has a
+ * real failure mode: given a weighty or emotional context, it can drift into
+ * a longer, more conversational answer and run out of tokens before ever
+ * reaching a closing brace, leaving nothing valid to parse. Forcing a tool
+ * call means the API returns an already-parsed object — there is no text to
+ * mis-close.
+ */
 export async function askJSON<T>(opts: {
   system: string;
   user: string;
+  schema: Record<string, unknown>;
   maxTokens?: number;
 }): Promise<T> {
   const res = await anthropic.messages.create({
@@ -31,15 +43,24 @@ export async function askJSON<T>(opts: {
     max_tokens: opts.maxTokens ?? 2000,
     system: opts.system,
     messages: [{ role: "user", content: opts.user }],
+    tools: [
+      {
+        name: "respond",
+        description: "Provide the structured response described in the system prompt.",
+        input_schema: opts.schema as { type: "object"; [k: string]: unknown },
+      },
+    ],
+    tool_choice: { type: "tool", name: "respond" },
   });
-  const text = res.content
-    .filter((b) => b.type === "text")
-    .map((b) => (b as { text: string }).text)
-    .join("");
-  const start = text.indexOf("{");
-  const end = text.lastIndexOf("}");
-  if (start === -1 || end === -1) {
-    throw new Error(`No JSON in model response: ${text.slice(0, 200)}`);
+
+  const toolUse = res.content.find((b) => b.type === "tool_use") as
+    | { type: "tool_use"; input: unknown }
+    | undefined;
+  if (!toolUse) {
+    if (res.stop_reason === "max_tokens") {
+      throw new Error("truncated: the model's reply was cut off before it could respond");
+    }
+    throw new Error("The model did not return a structured response");
   }
-  return JSON.parse(text.slice(start, end + 1)) as T;
+  return toolUse.input as T;
 }

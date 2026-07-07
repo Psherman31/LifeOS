@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from "next/server";
 import { prisma } from "@/lib/db";
 import { askJSON, describeAnthropicError } from "@/lib/anthropic";
 import { EXTRACT_SYSTEM } from "@/lib/prompts";
+import { EXTRACT_SCHEMA } from "@/lib/schemas";
 import { mondayOf, todayLocal } from "@/lib/dates";
 
 // POST /api/chat/extract { sessionId }
@@ -30,6 +31,7 @@ export async function POST(req: NextRequest) {
     extracted = await askJSON({
       system: EXTRACT_SYSTEM,
       user: `Conversation kind: ${session.kind}\n\nTRANSCRIPT:\n${transcript}`,
+      schema: EXTRACT_SCHEMA,
     });
   } catch (e) {
     console.error("extract failed", e);
