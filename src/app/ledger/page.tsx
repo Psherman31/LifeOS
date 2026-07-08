@@ -1,5 +1,6 @@
 import { prisma } from "@/lib/db";
 import { LedgerAdd } from "@/components/ledger-add";
+import { ExportButton } from "@/components/export-button";
 
 export const dynamic = "force-dynamic";
 
@@ -43,6 +44,14 @@ export default async function LedgerPage() {
           </div>
         ))}
       </section>
+
+      <footer className="mt-2 border-t border-line pt-4">
+        <ExportButton />
+        <p className="mt-1.5 text-xs text-soft">
+          Everything you've captured — tasks, stresses, this ledger, conversations — as one file.
+          Worth doing once a month; your data otherwise lives in only one place.
+        </p>
+      </footer>
     </main>
   );
 }
