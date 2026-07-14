@@ -21,6 +21,19 @@ export default function TodayPage() {
 
   useEffect(() => {
     load();
+    // Refetch whenever the app is brought back to the foreground — reopening
+    // the PWA, switching back to the tab, or a bfcache restore — so Today
+    // never lingers on a stale plan after a review elsewhere.
+    const onVisible = () => {
+      if (!document.hidden) load();
+    };
+    const onPageShow = () => load();
+    document.addEventListener("visibilitychange", onVisible);
+    window.addEventListener("pageshow", onPageShow);
+    return () => {
+      document.removeEventListener("visibilitychange", onVisible);
+      window.removeEventListener("pageshow", onPageShow);
+    };
   }, [load]);
 
   async function toggleItem(item: PlanItem) {

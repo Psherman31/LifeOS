@@ -1,7 +1,7 @@
 "use client";
 
 import { Suspense, useMemo, useState } from "react";
-import { useRouter, useSearchParams } from "next/navigation";
+import { useSearchParams } from "next/navigation";
 import type { HabitLite, TaskLite } from "@/lib/types";
 
 type Draft = {
@@ -23,7 +23,6 @@ export default function MorningPage() {
 
 function Morning() {
   const params = useSearchParams();
-  const router = useRouter();
   const [step, setStep] = useState<"arrive" | "pick">("arrive");
   const [note, setNote] = useState("");
   const [lowEnergy, setLowEnergy] = useState(params.get("lowEnergy") === "1");
@@ -34,6 +33,7 @@ function Morning() {
   const [habits, setHabits] = useState<HabitLite[]>([]);
   const [selected, setSelected] = useState<Map<string, Selection>>(new Map());
   const [showPool, setShowPool] = useState(false);
+  const [error, setError] = useState<string | null>(null);
 
   async function prepare() {
     setBusy(true);
@@ -78,18 +78,28 @@ function Morning() {
 
   async function commit() {
     setBusy(true);
+    setError(null);
     const habitIds = new Set(habits.map((h) => h.id));
     const items = Array.from(selected.entries()).map(([id, s]) => ({
       [habitIds.has(id) ? "habitId" : "taskId"]: id,
       tier: s.tier,
       dreadFlag: s.dread,
     }));
-    await fetch("/api/day/commit", {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ items, calendarChecked }),
-    });
-    router.push("/");
+    try {
+      const res = await fetch("/api/day/commit", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ items, calendarChecked }),
+      });
+      if (!res.ok) throw new Error("commit failed");
+      // Hard navigation (not router.push) so Today remounts and refetches
+      // its plan. A soft push can reuse a cached Today whose status is still
+      // "draft", which shows the morning-review prompt again — the loop.
+      window.location.assign("/");
+    } catch {
+      setBusy(false);
+      setError("Couldn't lock in the day just now — try that once more.");
+    }
   }
 
   const suggestedIds = useMemo(
@@ -209,6 +219,7 @@ function Morning() {
         </section>
       )}
 
+      {error && <p className="text-sm text-warn">{error}</p>}
       <button className="btn-primary sticky bottom-20" onClick={commit} disabled={busy || selected.size === 0}>
         {busy ? "…" : `Commit the day (${mustCount} must-do${mustCount === 1 ? "" : "s"}, ${selected.size - mustCount} extra)`}
       </button>

@@ -90,9 +90,9 @@ export default function EveningPage() {
             </ul>
           </div>
         )}
-        <Link href="/" className="btn-primary self-start">
+        <a href="/" className="btn-primary self-start">
           Done for tonight
-        </Link>
+        </a>
       </main>
     );
   }
