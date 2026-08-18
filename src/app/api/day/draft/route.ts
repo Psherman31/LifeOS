@@ -21,11 +21,20 @@ export async function POST(req: NextRequest) {
 
   const context = await buildContext({ forDate: date });
 
+  type NewTask = {
+    title: string;
+    context?: string;
+    size?: string;
+    tier?: string;
+    dread?: boolean;
+    deadline?: string | null;
+  };
   let draft: {
     briefing: string;
     mustIds: string[];
     extraIds: string[];
     sequencingNote: string | null;
+    newTasks?: NewTask[];
   };
   try {
     draft = await askJSON({
@@ -44,6 +53,49 @@ export async function POST(req: NextRequest) {
       extraIds: [],
       sequencingNote: null,
     };
+  }
+
+  // Turn concrete things the user named in their note into real tasks, so they
+  // land on today's list rather than only shaping priorities. Dedupe by title
+  // against the existing pool so re-drafting doesn't create duplicates.
+  if (Array.isArray(draft.newTasks) && draft.newTasks.length) {
+    const poolByTitle = new Map(
+      (
+        await prisma.task.findMany({
+          where: { status: "pool" },
+          select: { id: true, title: true },
+        })
+      ).map((t) => [t.title.trim().toLowerCase(), t.id])
+    );
+    const mustIds = new Set(draft.mustIds ?? []);
+    const extraIds = new Set(draft.extraIds ?? []);
+    for (const nt of draft.newTasks) {
+      if (!nt?.title?.trim()) continue;
+      const key = nt.title.trim().toLowerCase();
+      const tier = nt.tier === "must" ? "must" : "extra";
+      let id = poolByTitle.get(key);
+      if (!id) {
+        const created = await prisma.task.create({
+          data: {
+            title: nt.title.trim(),
+            context: nt.context ?? "any",
+            size: nt.size ?? "medium",
+            dreadFlag: !!nt.dread,
+            deadline: nt.deadline ? new Date(`${nt.deadline}T12:00:00Z`) : null,
+            source: "morning",
+          },
+        });
+        id = created.id;
+        poolByTitle.set(key, id);
+      } else if (nt.dread) {
+        await prisma.task.update({ where: { id }, data: { dreadFlag: true } });
+      }
+      if (tier === "must") mustIds.add(id);
+      else extraIds.add(id);
+    }
+    // A task should never sit in both tiers; must-do wins.
+    draft.mustIds = Array.from(mustIds);
+    draft.extraIds = Array.from(extraIds).filter((id) => !mustIds.has(id));
   }
 
   await prisma.dayPlan.update({

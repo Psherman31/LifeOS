@@ -48,6 +48,22 @@ export const MORNING_SCHEMA = {
     mustIds: { type: "array", items: { type: "string" } },
     extraIds: { type: "array", items: { type: "string" } },
     sequencingNote: { type: ["string", "null"] },
+    newTasks: {
+      type: "array",
+      description: "Concrete tasks extracted from the user's note that are not already in the pool",
+      items: {
+        type: "object",
+        properties: {
+          title: { type: "string" },
+          context: { type: "string", enum: ["work", "home", "any"] },
+          size: { type: "string", enum: ["quick", "medium", "big"] },
+          tier: { type: "string", enum: ["must", "extra"] },
+          dread: { type: "boolean" },
+          deadline: { type: ["string", "null"], description: "YYYY-MM-DD or null" },
+        },
+        required: ["title", "tier"],
+      },
+    },
   },
   required: ["briefing", "mustIds", "extraIds"],
 };

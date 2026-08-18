@@ -48,10 +48,16 @@ function Morning() {
     setDraft(body.draft);
     setTasks(body.tasks);
     setHabits(body.habits);
+    // Pre-select suggestions; carry a task's dread flag into the selection so
+    // anything you voiced dread about (or that carried a dread flag) shows it.
+    const dreadById = new Map<string, boolean>(
+      (body.tasks as TaskLite[]).map((t) => [t.id, t.dreadFlag])
+    );
     const sel = new Map<string, Selection>();
-    for (const id of body.draft.mustIds ?? []) sel.set(id, { tier: "must", dread: false });
+    for (const id of body.draft.mustIds ?? [])
+      sel.set(id, { tier: "must", dread: dreadById.get(id) ?? false });
     for (const id of body.draft.extraIds ?? [])
-      if (!sel.has(id)) sel.set(id, { tier: "extra", dread: false });
+      if (!sel.has(id)) sel.set(id, { tier: "extra", dread: dreadById.get(id) ?? false });
     setSelected(sel);
     setStep("pick");
   }
@@ -117,8 +123,8 @@ function Morning() {
         <div className="card flex flex-col gap-3">
           <label className="text-sm font-medium">How are you coming into the day?</label>
           <textarea
-            className="input min-h-[64px] resize-none"
-            placeholder="Optional — a sentence is plenty."
+            className="input min-h-[80px] resize-none"
+            placeholder="A sentence on how you're feeling — and anything specific you already know you need to do (&ldquo;prep for the 2:00 meeting&rdquo;). I'll add those to today."
             value={note}
             onChange={(e) => setNote(e.target.value)}
           />
